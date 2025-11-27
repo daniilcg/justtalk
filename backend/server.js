@@ -12,7 +12,7 @@ const io = socketIo(server, {
   }
 });
 
-// Глобальное хранилище (в продакшене заменить на БД)
+// Глобальное хранилище
 const globalStorage = {
   users: [],
   messages: [],
@@ -23,7 +23,7 @@ const globalStorage = {
 app.use(express.static(path.join(__dirname, '../frontend')));
 app.use(express.json());
 
-// Basic route for health check
+// Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
@@ -33,7 +33,6 @@ app.post('/api/register', (req, res) => {
   try {
     const { username, email, password, name } = req.body;
     
-    // Проверка уникальности
     const existingUser = globalStorage.users.find(u => 
       u.username === username || u.email === email
     );
@@ -105,7 +104,6 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-// Поиск пользователей
 app.get('/api/users/search', (req, res) => {
   try {
     const { query } = req.query;
@@ -133,7 +131,6 @@ app.get('/api/users/search', (req, res) => {
   }
 });
 
-// Онлайн пользователи
 app.get('/api/users/online', (req, res) => {
   try {
     const onlineUsers = globalStorage.users
@@ -151,7 +148,6 @@ app.get('/api/users/online', (req, res) => {
   }
 });
 
-// Сообщения
 app.get('/api/messages/:userId1/:userId2', (req, res) => {
   try {
     const { userId1, userId2 } = req.params;
@@ -182,7 +178,6 @@ app.post('/api/messages', (req, res) => {
 
     globalStorage.messages.push(newMessage);
     
-    // Отправляем уведомление через WebSocket
     io.emit('newMessage', newMessage);
     
     res.json({ success: true, message: newMessage });
@@ -200,6 +195,7 @@ io.on('connection', (socket) => {
     if (user) {
       user.online = true;
       user.socketId = socket.id;
+      socket.userId = userId;
     }
     
     io.emit('usersUpdate', globalStorage.users.map(u => ({
@@ -225,7 +221,6 @@ io.on('connection', (socket) => {
     
     globalStorage.calls.push(callData);
     
-    // Находим socket.id целевого пользователя
     const targetUser = globalStorage.users.find(u => u.id == toUserId);
     if (targetUser && targetUser.socketId) {
       socket.to(targetUser.socketId).emit('incomingCall', callData);
@@ -247,7 +242,6 @@ io.on('connection', (socket) => {
   socket.on('endCall', (callId) => {
     const call = globalStorage.calls.find(c => c.id == callId);
     if (call) {
-      // Уведомляем обоих пользователей
       const caller = globalStorage.users.find(u => u.id == call.fromUserId);
       const receiver = globalStorage.users.find(u => u.id == call.toUserId);
       
@@ -258,43 +252,31 @@ io.on('connection', (socket) => {
         socket.to(receiver.socketId).emit('callEnded', call);
       }
       
-      // Удаляем звонок
       globalStorage.calls = globalStorage.calls.filter(c => c.id !== callId);
     }
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    
-    const user = globalStorage.users.find(u => u.socketId === socket.id);
-    if (user) {
-      user.online = false;
-      user.socketId = null;
-      
-      io.emit('usersUpdate', globalStorage.users.map(u => ({
-        id: u.id,
-        username: u.username,
-        name: u.name,
-        avatar: u.avatar,
-        online: u.online
-      })));
+  // WebRTC сигнализация
+  socket.on('webrtc-offer', (data) => {
+    const { offer, to } = data;
+    const targetUser = globalStorage.users.find(u => u.id == to);
+    if (targetUser && targetUser.socketId) {
+      socket.to(targetUser.socketId).emit('webrtc-offer', {
+        offer: offer,
+        from: socket.userId
+      });
     }
   });
-});
 
-// Запуск сервера
-const PORT = process.env.PORT || 10000;
+  socket.on('webrtc-answer', (data) => {
+    const { answer, to } = data;
+    const targetUser = globalStorage.users.find(u => u.id == to);
+    if (targetUser && targetUser.socketId) {
+      socket.to(targetUser.socketId).emit('webrtc-answer', {
+        answer: answer,
+        from: socket.userId
+      });
+    }
+  });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 JustTalk Server running on port ${PORT}`);
-  console.log(`📞 Ready for global registration, messaging and calls!`);
-});
-
-// Обработка ошибок
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
+  socket.on('webrtc-ice-candidate', (data
