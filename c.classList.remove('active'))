@@ -1,1 +1,0 @@
-            document.querySelectorAll('.contact').forEach(c =;
