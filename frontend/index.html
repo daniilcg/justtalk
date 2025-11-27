@@ -1,125 +1,940 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>JustTalk</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JustTalk Web - Видео и аудио звонки</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial; background: #1a1a1a; color: white; }
-        .container { display: flex; height: 100vh; }
-        .sidebar { width: 300px; background: #2d2d2d; border-right: 1px solid #444; }
-        .main { flex: 1; display: flex; flex-direction: column; }
-        .header { padding: 20px; background: #2d2d2d; border-bottom: 1px solid #444; }
-        .messages { flex: 1; padding: 20px; overflow-y: auto; }
-        .message-input { padding: 20px; background: #2d2d2d; }
-        input, button { padding: 10px; margin: 5px; border: none; border-radius: 5px; }
-        input { width: 200px; background: #444; color: white; }
-        button { background: #0084ff; color: white; cursor: pointer; }
-        .message { margin: 10px 0; padding: 10px; background: #0084ff; border-radius: 10px; max-width: 70%; }
-        .message.own { background: #444; margin-left: auto; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        /* Auth Styles */
+        .auth-container {
+            padding: 30px;
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #5a6fd8;
+        }
+
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        /* Main App Styles */
+        #mainApp {
+            display: none;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        .header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-content {
+            flex: 1;
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f5f5f5;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-info {
+            padding: 20px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .search-box {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+        }
+
+        .contacts {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .contact {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .contact:hover {
+            background: #e9ecef;
+        }
+
+        .contact.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .contact-name {
+            font-weight: 600;
+        }
+
+        .status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: auto;
+        }
+
+        .online {
+            background: #4caf50;
+        }
+
+        .offline {
+            background: #ccc;
+        }
+
+        .friends-actions {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .friends-actions input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .friends-actions button {
+            padding: 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .friends-actions button:hover {
+            background: #5a6fd8;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 999;
+        }
+
+        .modal-content {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .modal-actions .secondary {
+            background: #eee;
+            color: #333;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .call-buttons {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .call-btn {
+            padding: 8px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .outgoing {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+
+        .incoming {
+            background: white;
+            border: 1px solid #ddd;
+        }
+
+        .message-input {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+        }
+
+        .message-input button {
+            width: auto;
+            padding: 12px 20px;
+            border-radius: 20px;
+        }
+
+        /* Call Interface */
+        .call-interface {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            position: relative;
+        }
+
+        .local-video, .remote-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .local-video {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            border: 2px solid white;
+            border-radius: 10px;
+        }
+
+        .call-controls {
+            padding: 20px;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .end-call {
+            background: #ff4444;
+            color: white;
+        }
+
+        .toggle-audio, .toggle-video {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                height: 100vh;
+            }
+
+            .app-content {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 200px;
+            }
+
+            .messages {
+                padding: 10px;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+
+            .local-video {
+                width: 120px;
+                height: 90px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar" id="sidebar">
-            <div style="padding: 20px;">
-                <input type="text" id="usernameInput" placeholder="Введите имя">
-                <button onclick="register()">Войти</button>
+    <!-- Auth Container -->
+    <div class="container" id="authContainer">
+        <div class="auth-container">
+            <div class="logo">📞 JustTalk Web</div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('login')">Вход</button>
+                <button class="tab" onclick="showTab('register')">Регистрация</button>
             </div>
-            <div id="contacts"></div>
+
+            <div id="login" class="tab-content active">
+                <form onsubmit="login(event)">
+                    <div class="form-group">
+                        <input type="email" id="loginEmail" placeholder="Email" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="loginPassword" placeholder="Пароль" required>
+                    </div>
+                    <button type="submit">Войти</button>
+                </form>
+            </div>
+
+            <div id="register" class="tab-content">
+                <form onsubmit="register(event)">
+                    <div class="form-group">
+                        <input type="text" id="registerName" placeholder="Имя" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="email" id="registerEmail" placeholder="Email" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="registerPassword" placeholder="Пароль" required>
+                    </div>
+                    <button type="submit">Зарегистрироваться</button>
+                </form>
+            </div>
+
+            <div id="authMessage" class="message"></div>
         </div>
-        
-        <div class="main" id="mainApp" style="display: none;">
-            <div class="header">
-                <h3 id="currentContact">Выберите контакт</h3>
-                <button onclick="startCall()">Позвонить</button>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp">
+        <div class="header">
+            <div class="logo">JustTalk Web</div>
+            <button onclick="logout()" style="width: auto; padding: 8px 15px;">Выйти</button>
+        </div>
+
+        <div class="app-content">
+            <div class="sidebar">
+                <div class="user-info">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <div id="userName">Пользователь</div>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Поиск пользователей..." oninput="searchUsers(this.value)">
+                </div>
+
+                <div class="contacts" id="contactsList">
+                    <!-- Контакты будут добавляться здесь -->
+                </div>
             </div>
-            <div class="messages" id="messages"></div>
-            <div class="message-input">
-                <input type="text" id="messageInput" placeholder="Сообщение">
-                <button onclick="sendMessage()">Отправить</button>
+
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div class="avatar" id="contactAvatar">C</div>
+                    <div id="contactName">Выберите контакт</div>
+                    <div class="call-buttons">
+                        <button class="call-btn" onclick="startCall('video')">📹 Видео</button>
+                        <button class="call-btn" onclick="startCall('audio')">📞 Аудио</button>
+                    </div>
+                </div>
+
+                <div class="messages" id="messagesContainer">
+                    <div style="text-align: center; color: #666; margin-top: 50px;">
+                        Выберите контакт для начала общения
+                    </div>
+                </div>
+
+                <div class="message-input">
+                    <input type="text" id="messageInput" placeholder="Введите сообщение..." disabled>
+                    <button onclick="sendMessage()" disabled id="sendButton">Отправить</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Call Interface -->
+    <div class="call-interface" id="callInterface">
+        <div class="video-container">
+            <video class="remote-video" id="remoteVideo" autoplay></video>
+            <video class="local-video" id="localVideo" autoplay muted></video>
+        </div>
+        <div class="call-controls">
+            <button class="control-btn toggle-audio" onclick="toggleAudio()">🎤</button>
+            <button class="control-btn toggle-video" onclick="toggleVideo()">📹</button>
+            <button class="control-btn end-call" onclick="endCall()">📞</button>
+        </div>
+    </div>
+
     <script>
+        // Глобальные переменные
         let currentUser = null;
         let currentContact = null;
-        let socket = null;
+        let localStream = null;
+        let isInCall = false;
 
-        function register() {
-            const username = document.getElementById('usernameInput').value;
-            if (!username) return;
-            
-            currentUser = username;
-            socket = io();
-            
-            socket.emit('register', username);
-            
-            document.getElementById('sidebar').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'flex';
-            
-            loadContacts();
+        // Глобальное хранилище пользователей (симуляция базы данных)
+        const GLOBAL_USERS_KEY = 'justtalk_global_users';
+
+        // Загрузка всех пользователей из глобального хранилища
+        function loadAllUsers() {
+            const savedUsers = localStorage.getItem(GLOBAL_USERS_KEY);
+            if (savedUsers) {
+                return JSON.parse(savedUsers);
+            }
+
+            // Создаем демо пользователей при первом запуске
+            const demoUsers = [
+                {
+                    id: 1,
+                    name: 'Алексей',
+                    email: 'alex@example.com',
+                    password: '123456',
+                    online: true,
+                    avatar: 'A'
+                },
+                {
+                    id: 2,
+                    name: 'Мария',
+                    email: 'maria@example.com',
+                    password: '123456',
+                    online: false,
+                    avatar: 'M'
+                },
+                {
+                    id: 3,
+                    name: 'Иван',
+                    email: 'ivan@example.com',
+                    password: '123456',
+                    online: true,
+                    avatar: 'I'
+                }
+            ];
+
+            saveAllUsers(demoUsers);
+            return demoUsers;
         }
 
-        function loadContacts() {
-            socket.emit('getUsers');
-            socket.on('users', (users) => {
-                const contactsDiv = document.getElementById('contacts');
-                contactsDiv.innerHTML = '<h3>Контакты:</h3>';
-                users.forEach(user => {
-                    if (user !== currentUser) {
-                        const div = document.createElement('div');
-                        div.innerHTML = user;
-                        div.style.padding = '10px';
-                        div.style.cursor = 'pointer';
-                        div.style.borderBottom = '1px solid #444';
-                        div.onclick = () => selectContact(user);
-                        contactsDiv.appendChild(div);
-                    }
-                });
+        // Сохранение всех пользователей
+        function saveAllUsers(users) {
+            localStorage.setItem(GLOBAL_USERS_KEY, JSON.stringify(users));
+        }
+
+        // Регистрация
+        function register(event) {
+            event.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            if (!name || !email || !password) {
+                showMessage('Все поля обязательны для заполнения', 'error');
+                return;
+            }
+
+            const allUsers = loadAllUsers();
+
+            // Проверяем существует ли пользователь
+            const existingUser = allUsers.find(user => user.email === email);
+            if (existingUser) {
+                showMessage('Пользователь с таким email уже существует', 'error');
+                return;
+            }
+
+            // Создаем нового пользователя
+            const newUser = {
+                id: Date.now(),
+                name: name,
+                email: email,
+                password: password,
+                online: true,
+                avatar: name.charAt(0).toUpperCase()
+            };
+
+            // Добавляем в глобальное хранилище
+            allUsers.push(newUser);
+            saveAllUsers(allUsers);
+
+            // Автоматически входим
+            localStorage.setItem('currentUser', JSON.stringify(newUser));
+            showMainApp(newUser);
+            showMessage('Регистрация успешна!', 'success');
+        }
+
+        // Вход
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const allUsers = loadAllUsers();
+            const user = allUsers.find(u => u.email === email && u.password === password);
+
+            if (!user) {
+                showMessage('Неверный email или пароль', 'error');
+                return;
+            }
+
+            // Обновляем статус онлайн
+            user.online = true;
+            saveAllUsers(allUsers);
+
+            localStorage.setItem('currentUser', JSON.stringify(user));
+            showMainApp(user);
+        }
+
+        // Показ главного приложения
+        function showMainApp(user) {
+            currentUser = user;
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            document.getElementById('userName').textContent = user.name;
+            document.getElementById('userAvatar').textContent = user.avatar;
+            renderUsers();
+        }
+
+        // Отображение пользователей
+        function renderUsers() {
+            const contactsList = document.getElementById('contactsList');
+            contactsList.innerHTML = '';
+
+            const allUsers = loadAllUsers();
+
+            // Фильтруем чтобы не показывать текущего пользователя
+            const otherUsers = allUsers.filter(user => user.id !== currentUser.id);
+
+            if (otherUsers.length === 0) {
+                contactsList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <p>Пока нет других пользователей</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Расскажите друзьям чтобы они зарегистрировались!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            otherUsers.forEach(user => {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'contact';
+                userDiv.innerHTML = `
+                    <div class="avatar">${user.avatar}</div>
+                    <div style="flex: 1;">
+                        <div class="contact-name">${user.name}</div>
+                        <div style="font-size: 12px; color: #666;">${user.email}</div>
+                    </div>
+                    <div class="status ${user.online ? 'online' : 'offline'}"></div>
+                `;
+                userDiv.onclick = () => selectContact(user);
+                contactsList.appendChild(userDiv);
             });
         }
 
-        function selectContact(contact) {
-            currentContact = contact;
-            document.getElementById('currentContact').textContent = contact;
+        // Поиск пользователей
+        function searchUsers(query) {
+            const allUsers = loadAllUsers();
+            const filteredUsers = allUsers.filter(user =>
+                user.id !== currentUser.id &&
+                (user.name.toLowerCase().includes(query.toLowerCase()) ||
+                    user.email.toLowerCase().includes(query.toLowerCase()))
+            );
+
+            const contactsList = document.getElementById('contactsList');
+            contactsList.innerHTML = '';
+
+            if (filteredUsers.length === 0 && query) {
+                contactsList.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #666;">
+                        <p>Пользователь "${query}" не найден</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Пользователь должен быть зарегистрирован в системе</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filteredUsers.forEach(user => {
+                const userDiv = document.createElement('div');
+                userDiv.className = 'contact';
+                userDiv.innerHTML = `
+                    <div class="avatar">${user.avatar}</div>
+                    <div style="flex: 1;">
+                        <div class="contact-name">${user.name}</div>
+                        <div style="font-size: 12px; color: #666;">${user.email}</div>
+                    </div>
+                    <div class="status ${user.online ? 'online' : 'offline'}"></div>
+                `;
+                userDiv.onclick = () => selectContact(user);
+                contactsList.appendChild(userDiv);
+            });
+        }
+
+        // Выбор контакта
+        function selectContact(user) {
+            currentContact = user;
+            document.querySelectorAll('.contact').forEach(c => c.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            document.getElementById('contactName').textContent = user.name;
+            document.getElementById('contactAvatar').textContent = user.avatar;
+
+            document.getElementById('messageInput').disabled = false;
+            document.getElementById('sendButton').disabled = false;
+
             loadMessages();
         }
 
+        // Загрузка сообщений
         function loadMessages() {
-            socket.emit('getMessages', { from: currentUser, to: currentContact });
-            socket.on('messages', (messages) => {
-                const messagesDiv = document.getElementById('messages');
-                messagesDiv.innerHTML = '';
-                messages.forEach(msg => {
-                    const div = document.createElement('div');
-                    div.className = `message ${msg.from === currentUser ? 'own' : ''}`;
-                    div.textContent = msg.text;
-                    messagesDiv.appendChild(div);
-                });
+            const messagesContainer = document.getElementById('messagesContainer');
+            const chatKey = `chat_${currentUser.id}_${currentContact.id}`;
+            const messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+
+            messagesContainer.innerHTML = '';
+
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = `<div style="text-align: center; color: #666; margin-top: 50px;">Начните общение с ${currentContact.name}</div>`;
+                return;
+            }
+
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.senderId === currentUser.id ? 'outgoing' : 'incoming'}`;
+                messageDiv.textContent = message.text;
+                messagesContainer.appendChild(messageDiv);
             });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
+        // Отправка сообщения
         function sendMessage() {
             const input = document.getElementById('messageInput');
-            const text = input.value;
+            const text = input.value.trim();
+
             if (!text || !currentContact) return;
-            
-            socket.emit('sendMessage', {
-                from: currentUser,
-                to: currentContact,
-                text: text
-            });
-            
+
+            const chatKey = `chat_${currentUser.id}_${currentContact.id}`;
+            const messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+
+            const newMessage = {
+                text: text,
+                senderId: currentUser.id,
+                timestamp: new Date().toISOString()
+            };
+
+            messages.push(newMessage);
+            localStorage.setItem(chatKey, JSON.stringify(messages));
+
             input.value = '';
             loadMessages();
         }
 
-        function startCall() {
-            if (!currentContact) return;
-            alert(`Звонок ${currentContact} - WebRTC нужно настраивать отдельно`);
+        // Звонки
+        async function startCall(type) {
+            if (!currentContact) {
+                alert('Выберите пользователя для звонка');
+                return;
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: type === 'video',
+                    audio: true
+                });
+                document.getElementById('callInterface').style.display = 'flex';
+                document.getElementById('mainApp').style.display = 'none';
+                const localVideo = document.getElementById('localVideo');
+                localVideo.srcObject = localStream;
+                isInCall = true;
+            } catch (error) {
+                alert('Ошибка доступа к камере/микрофону: ' + error.message);
+            }
         }
+
+        function toggleAudio() {
+            if (localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    const btn = document.querySelector('.toggle-audio');
+                    btn.style.background = audioTrack.enabled ? 'rgba(255,255,255,0.2)' : '#ff4444';
+                }
+            }
+        }
+
+        function toggleVideo() {
+            if (localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    const btn = document.querySelector('.toggle-video');
+                    btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#ff4444';
+
+                    document.getElementById('localVideo').style.display = videoTrack.enabled ? 'block' : 'none';
+                }
+            }
+        }
+
+        function endCall() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            document.getElementById('callInterface').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            isInCall = false;
+        }
+
+        // Выход
+        function logout() {
+            if (isInCall) endCall();
+
+            // Обновляем статус офлайн
+            if (currentUser) {
+                const allUsers = loadAllUsers();
+                const userIndex = allUsers.findIndex(u => u.id === currentUser.id);
+                if (userIndex !== -1) {
+                    allUsers[userIndex].online = false;
+                    saveAllUsers(allUsers);
+                }
+            }
+
+            localStorage.removeItem('currentUser');
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('authContainer').style.display = 'flex';
+        }
+
+        // Вспомогательные функции
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('authMessage');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+        }
+
+        // Обработчики событий
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Загрузка при старте
+        window.onload = function() {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+
+                // Обновляем статус онлайн
+                const allUsers = loadAllUsers();
+                const userIndex = allUsers.findIndex(u => u.id === user.id);
+                if (userIndex !== -1) {
+                    allUsers[userIndex].online = true;
+                    saveAllUsers(allUsers);
+                    showMainApp(allUsers[userIndex]);
+                } else {
+                    showMainApp(user);
+                }
+            }
+        };
     </script>
-    <script src="/socket.io/socket.io.js"></script>
 </body>
 </html>
