@@ -1,1 +1,1 @@
-\`https://ВАШ-USERNAME.gitlab.io/justtalk-web\` 
+https://justtalk-cwxz.onrender.com
