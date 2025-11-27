@@ -1,1 +1,0 @@
-                localStream.getTracks().forEach(track =;
