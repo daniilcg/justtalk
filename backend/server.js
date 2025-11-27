@@ -279,4 +279,48 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('webrtc-ice-candidate', (data
+  socket.on('webrtc-ice-candidate', (data) => {
+    const { candidate, to } = data;
+    const targetUser = globalStorage.users.find(u => u.id == to);
+    if (targetUser && targetUser.socketId) {
+      socket.to(targetUser.socketId).emit('webrtc-ice-candidate', {
+        candidate: candidate,
+        from: socket.userId
+      });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    
+    const user = globalStorage.users.find(u => u.socketId === socket.id);
+    if (user) {
+      user.online = false;
+      user.socketId = null;
+      
+      io.emit('usersUpdate', globalStorage.users.map(u => ({
+        id: u.id,
+        username: u.username,
+        name: u.name,
+        avatar: u.avatar,
+        online: u.online
+      })));
+    }
+  });
+});
+
+// Запуск сервера
+const PORT = process.env.PORT || 10000;
+
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 JustTalk Server running on port ${PORT}`);
+  console.log(`📞 Ready for global registration, messaging and calls!`);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
