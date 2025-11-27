@@ -1,0 +1,14 @@
+image: node:16
+
+pages:
+  stage: deploy
+  before_script:
+    - mkdir -p public
+  script:
+    - echo "Deploying JustTalk Web..."
+    - cp -r frontend/* public/
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
