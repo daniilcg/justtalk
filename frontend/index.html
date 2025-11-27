@@ -222,73 +222,6 @@
             background: #ccc;
         }
 
-        .friends-actions {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .friends-actions input {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-
-        .friends-actions button {
-            padding: 8px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .friends-actions button:hover {
-            background: #5a6fd8;
-        }
-
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            z-index: 999;
-        }
-
-        .modal-content {
-            background: #fff;
-            border-radius: 10px;
-            padding: 20px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-
-        .modal-content h3 {
-            margin-bottom: 15px;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .modal-actions .secondary {
-            background: #eee;
-            color: #333;
-        }
-
         .chat-area {
             flex: 1;
             display: flex;
@@ -561,161 +494,174 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script>
         // Глобальные переменные
         let currentUser = null;
         let currentContact = null;
+        let socket = null;
         let localStream = null;
         let isInCall = false;
+        let currentCall = null;
 
-        // Глобальное хранилище пользователей (симуляция базы данных)
-        const GLOBAL_USERS_KEY = 'justtalk_global_users';
+        // ========== АУТЕНТИФИКАЦИЯ ==========
 
-        // Загрузка всех пользователей из глобального хранилища
-        function loadAllUsers() {
-            const savedUsers = localStorage.getItem(GLOBAL_USERS_KEY);
-            if (savedUsers) {
-                return JSON.parse(savedUsers);
-            }
-
-            // Создаем демо пользователей при первом запуске
-            const demoUsers = [
-                {
-                    id: 1,
-                    name: 'Алексей',
-                    email: 'alex@example.com',
-                    password: '123456',
-                    online: true,
-                    avatar: 'A'
-                },
-                {
-                    id: 2,
-                    name: 'Мария',
-                    email: 'maria@example.com',
-                    password: '123456',
-                    online: false,
-                    avatar: 'M'
-                },
-                {
-                    id: 3,
-                    name: 'Иван',
-                    email: 'ivan@example.com',
-                    password: '123456',
-                    online: true,
-                    avatar: 'I'
-                }
-            ];
-
-            saveAllUsers(demoUsers);
-            return demoUsers;
-        }
-
-        // Сохранение всех пользователей
-        function saveAllUsers(users) {
-            localStorage.setItem(GLOBAL_USERS_KEY, JSON.stringify(users));
-        }
-
-        // Регистрация
-        function register(event) {
+        async function register(event) {
             event.preventDefault();
             const name = document.getElementById('registerName').value;
             const email = document.getElementById('registerEmail').value;
             const password = document.getElementById('registerPassword').value;
+            const username = name.toLowerCase().replace(/\s+/g, ''); // Создаем username из имени
 
-            if (!name || !email || !password) {
-                showMessage('Все поля обязательны для заполнения', 'error');
-                return;
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, name })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    localStorage.setItem('currentUser', JSON.stringify(result.user));
+                    showMainApp(result.user);
+                    showMessage('Регистрация успешна!', 'success');
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка регистрации: ' + error.message, 'error');
             }
-
-            const allUsers = loadAllUsers();
-
-            // Проверяем существует ли пользователь
-            const existingUser = allUsers.find(user => user.email === email);
-            if (existingUser) {
-                showMessage('Пользователь с таким email уже существует', 'error');
-                return;
-            }
-
-            // Создаем нового пользователя
-            const newUser = {
-                id: Date.now(),
-                name: name,
-                email: email,
-                password: password,
-                online: true,
-                avatar: name.charAt(0).toUpperCase()
-            };
-
-            // Добавляем в глобальное хранилище
-            allUsers.push(newUser);
-            saveAllUsers(allUsers);
-
-            // Автоматически входим
-            localStorage.setItem('currentUser', JSON.stringify(newUser));
-            showMainApp(newUser);
-            showMessage('Регистрация успешна!', 'success');
         }
 
-        // Вход
-        function login(event) {
+        async function login(event) {
             event.preventDefault();
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
 
-            const allUsers = loadAllUsers();
-            const user = allUsers.find(u => u.email === email && u.password === password);
-
-            if (!user) {
-                showMessage('Неверный email или пароль', 'error');
-                return;
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    localStorage.setItem('currentUser', JSON.stringify(result.user));
+                    showMainApp(result.user);
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Ошибка входа: ' + error.message, 'error');
             }
-
-            // Обновляем статус онлайн
-            user.online = true;
-            saveAllUsers(allUsers);
-
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            showMainApp(user);
         }
 
-        // Показ главного приложения
+        // ========== ГЛАВНОЕ ПРИЛОЖЕНИЕ ==========
+
         function showMainApp(user) {
             currentUser = user;
             document.getElementById('authContainer').style.display = 'none';
             document.getElementById('mainApp').style.display = 'flex';
             document.getElementById('userName').textContent = user.name;
             document.getElementById('userAvatar').textContent = user.avatar;
-            renderUsers();
+            
+            // Подключаем WebSocket
+            connectWebSocket(user.id);
+            
+            // Загружаем онлайн пользователей
+            loadOnlineUsers();
         }
 
-        // Отображение пользователей
-        function renderUsers() {
+        function connectWebSocket(userId) {
+            socket = io();
+            
+            // Сообщаем серверу что пользователь онлайн
+            socket.emit('userOnline', userId);
+            
+            // Слушаем обновления пользователей
+            socket.on('usersUpdate', (users) => {
+                if (!document.getElementById('searchInput').value) {
+                    renderUsers(users.filter(user => user.id !== currentUser.id));
+                }
+            });
+            
+            // Слушаем новые сообщения
+            socket.on('newMessage', (message) => {
+                if (currentContact && 
+                    (message.senderId === currentContact.id || message.receiverId === currentContact.id)) {
+                    loadMessages();
+                }
+            });
+            
+            // Слушаем входящие звонки
+            socket.on('incomingCall', (callData) => {
+                showIncomingCallModal(callData);
+            });
+            
+            // Слушаем принятие звонка
+            socket.on('callAccepted', (callData) => {
+                showCallInterface();
+            });
+            
+            // Слушаем завершение звонка
+            socket.on('callEnded', (callData) => {
+                endCall();
+            });
+        }
+
+        // ========== ПОИСК И ОТОБРАЖЕНИЕ ПОЛЬЗОВАТЕЛЕЙ ==========
+
+        async function searchUsers(query) {
+            if (!query) {
+                loadOnlineUsers();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/users/search?query=${encodeURIComponent(query)}`);
+                const users = await response.json();
+                renderUsers(users);
+            } catch (error) {
+                console.error('Search error:', error);
+            }
+        }
+
+        async function loadOnlineUsers() {
+            try {
+                const excludeId = currentUser ? currentUser.id : '';
+                const response = await fetch(`/api/users/online?exclude=${excludeId}`);
+                const users = await response.json();
+                renderUsers(users);
+            } catch (error) {
+                console.error('Load users error:', error);
+            }
+        }
+
+        function renderUsers(users) {
             const contactsList = document.getElementById('contactsList');
             contactsList.innerHTML = '';
 
-            const allUsers = loadAllUsers();
-
-            // Фильтруем чтобы не показывать текущего пользователя
-            const otherUsers = allUsers.filter(user => user.id !== currentUser.id);
-
-            if (otherUsers.length === 0) {
+            if (users.length === 0) {
                 contactsList.innerHTML = `
                     <div style="text-align: center; padding: 20px; color: #666;">
-                        <p>Пока нет других пользователей</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Расскажите друзьям чтобы они зарегистрировались!</p>
+                        <p>Пользователи не найдены</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Попробуйте найти по имени или никнейму</p>
                     </div>
                 `;
                 return;
             }
 
-            otherUsers.forEach(user => {
+            users.forEach(user => {
                 const userDiv = document.createElement('div');
                 userDiv.className = 'contact';
                 userDiv.innerHTML = `
                     <div class="avatar">${user.avatar}</div>
                     <div style="flex: 1;">
                         <div class="contact-name">${user.name}</div>
-                        <div style="font-size: 12px; color: #666;">${user.email}</div>
+                        <div style="font-size: 12px; color: #666;">@${user.username}</div>
                     </div>
                     <div class="status ${user.online ? 'online' : 'offline'}"></div>
                 `;
@@ -724,46 +670,9 @@
             });
         }
 
-        // Поиск пользователей
-        function searchUsers(query) {
-            const allUsers = loadAllUsers();
-            const filteredUsers = allUsers.filter(user =>
-                user.id !== currentUser.id &&
-                (user.name.toLowerCase().includes(query.toLowerCase()) ||
-                    user.email.toLowerCase().includes(query.toLowerCase()))
-            );
+        // ========== ВЫБОР КОНТАКТА И СООБЩЕНИЯ ==========
 
-            const contactsList = document.getElementById('contactsList');
-            contactsList.innerHTML = '';
-
-            if (filteredUsers.length === 0 && query) {
-                contactsList.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: #666;">
-                        <p>Пользователь "${query}" не найден</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Пользователь должен быть зарегистрирован в системе</p>
-                    </div>
-                `;
-                return;
-            }
-
-            filteredUsers.forEach(user => {
-                const userDiv = document.createElement('div');
-                userDiv.className = 'contact';
-                userDiv.innerHTML = `
-                    <div class="avatar">${user.avatar}</div>
-                    <div style="flex: 1;">
-                        <div class="contact-name">${user.name}</div>
-                        <div style="font-size: 12px; color: #666;">${user.email}</div>
-                    </div>
-                    <div class="status ${user.online ? 'online' : 'offline'}"></div>
-                `;
-                userDiv.onclick = () => selectContact(user);
-                contactsList.appendChild(userDiv);
-            });
-        }
-
-        // Выбор контакта
-        function selectContact(user) {
+        async function selectContact(user) {
             currentContact = user;
             document.querySelectorAll('.contact').forEach(c => c.classList.remove('active'));
             event.currentTarget.classList.add('active');
@@ -774,56 +683,71 @@
             document.getElementById('messageInput').disabled = false;
             document.getElementById('sendButton').disabled = false;
 
-            loadMessages();
+            await loadMessages();
         }
 
-        // Загрузка сообщений
-        function loadMessages() {
-            const messagesContainer = document.getElementById('messagesContainer');
-            const chatKey = `chat_${currentUser.id}_${currentContact.id}`;
-            const messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+        async function loadMessages() {
+            if (!currentUser || !currentContact) return;
 
-            messagesContainer.innerHTML = '';
+            try {
+                const response = await fetch(`/api/messages/${currentUser.id}/${currentContact.id}`);
+                const messages = await response.json();
+                
+                const messagesContainer = document.getElementById('messagesContainer');
+                messagesContainer.innerHTML = '';
 
-            if (messages.length === 0) {
-                messagesContainer.innerHTML = `<div style="text-align: center; color: #666; margin-top: 50px;">Начните общение с ${currentContact.name}</div>`;
-                return;
+                if (messages.length === 0) {
+                    messagesContainer.innerHTML = `
+                        <div style="text-align: center; color: #666; margin-top: 50px;">
+                            Начните общение с ${currentContact.name}
+                        </div>
+                    `;
+                    return;
+                }
+
+                messages.forEach(message => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${message.senderId === currentUser.id ? 'outgoing' : 'incoming'}`;
+                    messageDiv.textContent = message.text;
+                    messagesContainer.appendChild(messageDiv);
+                });
+
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            } catch (error) {
+                console.error('Load messages error:', error);
             }
-
-            messages.forEach(message => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${message.senderId === currentUser.id ? 'outgoing' : 'incoming'}`;
-                messageDiv.textContent = message.text;
-                messagesContainer.appendChild(messageDiv);
-            });
-
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // Отправка сообщения
-        function sendMessage() {
+        async function sendMessage() {
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
 
             if (!text || !currentContact) return;
 
-            const chatKey = `chat_${currentUser.id}_${currentContact.id}`;
-            const messages = JSON.parse(localStorage.getItem(chatKey) || '[]');
+            try {
+                const response = await fetch('/api/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: currentUser.id,
+                        receiverId: currentContact.id,
+                        text: text
+                    })
+                });
 
-            const newMessage = {
-                text: text,
-                senderId: currentUser.id,
-                timestamp: new Date().toISOString()
-            };
-
-            messages.push(newMessage);
-            localStorage.setItem(chatKey, JSON.stringify(messages));
-
-            input.value = '';
-            loadMessages();
+                const result = await response.json();
+                
+                if (result.success) {
+                    input.value = '';
+                    loadMessages();
+                }
+            } catch (error) {
+                console.error('Send message error:', error);
+            }
         }
 
-        // Звонки
+        // ========== ЗВОНКИ ==========
+
         async function startCall(type) {
             if (!currentContact) {
                 alert('Выберите пользователя для звонка');
@@ -835,14 +759,45 @@
                     video: type === 'video',
                     audio: true
                 });
-                document.getElementById('callInterface').style.display = 'flex';
-                document.getElementById('mainApp').style.display = 'none';
-                const localVideo = document.getElementById('localVideo');
-                localVideo.srcObject = localStream;
-                isInCall = true;
+                
+                currentCall = {
+                    id: Date.now(),
+                    type: type,
+                    with: currentContact.id
+                };
+                
+                // Отправляем запрос на звонок
+                socket.emit('startCall', {
+                    fromUserId: currentUser.id,
+                    toUserId: currentContact.id,
+                    type: type
+                });
+                
+                showCallInterface();
+                
             } catch (error) {
                 alert('Ошибка доступа к камере/микрофону: ' + error.message);
             }
+        }
+
+        function showIncomingCallModal(callData) {
+            const acceptCall = confirm(`Входящий ${callData.type === 'video' ? 'видео' : 'аудио'} звонок. Принять?`);
+            if (acceptCall) {
+                socket.emit('acceptCall', callData.id);
+                showCallInterface();
+            }
+        }
+
+        function showCallInterface() {
+            document.getElementById('callInterface').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            
+            const localVideo = document.getElementById('localVideo');
+            if (localStream) {
+                localVideo.srcObject = localStream;
+            }
+            
+            isInCall = true;
         }
 
         function toggleAudio() {
@@ -863,7 +818,6 @@
                     videoTrack.enabled = !videoTrack.enabled;
                     const btn = document.querySelector('.toggle-video');
                     btn.style.background = videoTrack.enabled ? 'rgba(255,255,255,0.2)' : '#ff4444';
-
                     document.getElementById('localVideo').style.display = videoTrack.enabled ? 'block' : 'none';
                 }
             }
@@ -873,31 +827,31 @@
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
             }
+            
+            if (currentCall) {
+                socket.emit('endCall', currentCall.id);
+                currentCall = null;
+            }
+            
             document.getElementById('callInterface').style.display = 'none';
             document.getElementById('mainApp').style.display = 'flex';
             isInCall = false;
         }
 
-        // Выход
+        // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+
         function logout() {
             if (isInCall) endCall();
-
-            // Обновляем статус офлайн
-            if (currentUser) {
-                const allUsers = loadAllUsers();
-                const userIndex = allUsers.findIndex(u => u.id === currentUser.id);
-                if (userIndex !== -1) {
-                    allUsers[userIndex].online = false;
-                    saveAllUsers(allUsers);
-                }
+            
+            if (socket) {
+                socket.disconnect();
             }
-
+            
             localStorage.removeItem('currentUser');
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('authContainer').style.display = 'flex';
         }
 
-        // Вспомогательные функции
         function showTab(tabName) {
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -912,7 +866,8 @@
             messageDiv.style.display = 'block';
         }
 
-        // Обработчики событий
+        // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendMessage();
         });
@@ -922,17 +877,7 @@
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
                 const user = JSON.parse(savedUser);
-
-                // Обновляем статус онлайн
-                const allUsers = loadAllUsers();
-                const userIndex = allUsers.findIndex(u => u.id === user.id);
-                if (userIndex !== -1) {
-                    allUsers[userIndex].online = true;
-                    saveAllUsers(allUsers);
-                    showMainApp(allUsers[userIndex]);
-                } else {
-                    showMainApp(user);
-                }
+                showMainApp(user);
             }
         };
     </script>
